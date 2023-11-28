@@ -1,13 +1,13 @@
-import json
 import argparse
-import os
-import io
-import shutil
 import copy
+import io
+import json
+import os
+import shutil
 from datetime import datetime
-from pick import pick
 from time import sleep
 
+from pick import pick
 
 
 # Create wrapper classes for using slack_sdk in place of slacker
@@ -28,13 +28,14 @@ class SlackDataLoader:
     For secruity reason, we have annonymized names - the names you will see are generated using faker library.
     
     '''
+    
     def __init__(self, path):
         '''
-        path: path to the slack exported data folder
+        path: ./../dataset/
         '''
         self.path = path
         self.channels = self.get_channels()
-        self.users = self.get_ussers()
+        self.users = self.get_users()
     
 
     def get_users(self):
@@ -74,7 +75,7 @@ class SlackDataLoader:
         return userNamesById, userIdsByName        
 
 
-        # combine all json file in all-weeks8-9
+    # combine all json file in all-weeks8-9
     def slack_parser(path_channel):
         """ parse slack data to extract useful informations from the json file
             step of execution
@@ -169,9 +170,6 @@ class SlackDataLoader:
         df_reaction['channel'] = channel
         return df_reaction
 
-
-    
-    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Export Slack history')
