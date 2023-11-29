@@ -1,14 +1,13 @@
-import os
-import sys
+import datetime
 import glob
 import json
-import datetime
-from collections import Counter
+import os
+import sys
 from collections import Counter
 
 import pandas as pd
-from matplotlib import pyplot as plt
 import seaborn as sns
+from matplotlib import pyplot as plt
 from nltk.corpus import stopwords
 
 
@@ -124,6 +123,7 @@ def get_messages_dict(msgs):
     return msg_list
 
 def from_msg_get_replies(msg):
+
     replies = []
     if "thread_ts" in msg and "replies" in msg:
         try:
@@ -136,6 +136,7 @@ def from_msg_get_replies(msg):
     return replies
 
 def msgs_to_df(msgs):
+
     msg_list = get_messages_dict(msgs)
     df = pd.DataFrame(msg_list)
     return df
@@ -181,19 +182,36 @@ def convert_2_timestamp(column, data):
         return timestamp_
     else: print(f"{column} not in data")
 
-def get_community_participation(path):
-    """ specify path to get json files"""
-    combined = []
-    comm_dict = {}
-    for json_file in glob.glob(f"{path}*.json"):
-        with open(json_file, 'r') as slack_data:
-            combined.append(slack_data)
-    # print(f"Total json files is {len(combined)}")
-    for i in combined:
-        a = json.load(open(i.name, 'r', encoding='utf-8'))
+def get_messages_reply_timestamp_from_channel(channel_path):
+    """
+    Get timestamps of messages along with their latest reply timestamps from a Slack channel.
 
-        for msg in a:
-            if 'replies' in msg.keys():
-                for i in msg['replies']:
-                    comm_dict[i['user']] = comm_dict.get(i['user'], 0)+1
-    return comm_dict
+    Args:
+        channel_path (str): The path to the directory containing Slack JSON files for the channel.
+
+    Returns:
+        tuple: A tuple containing a list of message timestamps along with their latest reply timestamps
+               and the count of messages with no replies.
+    """
+    json_files = [
+        f"{channel_path}/{pos_json}" 
+        for pos_json in os.listdir(channel_path) 
+        if pos_json.endswith('.json')
+    ]     
+    combined = []
+
+    for json_file in json_files:
+        with open(json_file, 'r', encoding="utf8") as slack_data:
+            json_content = json.load(slack_data)
+            combined.extend(json_content)
+    
+    message_time_stamps = []
+    no_reply_messages_count = 0
+
+    for msgs in combined:
+        if "latest_reply" in msgs:
+            message_time_stamps.append([msgs["ts"], msgs["latest_reply"]])
+        else:
+            no_reply_messages_count += 1
+
+    return message_time_stamps, no_reply_messages_count

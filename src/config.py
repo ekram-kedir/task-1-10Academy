@@ -9,4 +9,3 @@ parser.add_argument('--channel', type=str, default='', help='which channel we pa
 parser.add_argument('--userfile', type=str, default='users.json', help='users profile information')
 
 cfg = parser.parse_args()
-# print(cfg)
