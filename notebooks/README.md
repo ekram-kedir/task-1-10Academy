@@ -4,7 +4,7 @@
 #### Slack Data Parsing Functions
 `slack_parser`: Parses Slack data to extract relevant information such as message type, content, sender details, thread information, etc. Combines data from multiple JSON files and returns a DataFrame.
 
-`parse_slack_reaction`: Retrieves reaction-related information from Slack data, including reaction name, count, users, associated message, and user ID. Returns a DataFrame.
+f`parse_slack_reaction`: Retrieves reaction-related information from Slack data, including reaction name, count, users, associated message, and user ID. Returns a DataFrame.
 
 `convert_2_timestamp`: Converts Unix time to a readable timestamp for specified columns in the DataFrame.
 
