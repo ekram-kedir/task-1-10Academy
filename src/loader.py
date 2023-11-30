@@ -57,11 +57,6 @@ class SlackDataLoader:
 
         return channels
 
-    def get_channel_messages(self, channel_name):
-        '''
-        write a function to get all the messages from a channel
-        
-        '''
 
     def get_user_map(self):
         '''
