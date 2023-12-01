@@ -1,14 +1,14 @@
-import os
-import sys
+import datetime
 import glob
 import json
-import datetime
+import os
+import sys
 from collections import Counter
-from collections import Counter
+from collections import defaultdict
 
 import pandas as pd
-from matplotlib import pyplot as plt
 import seaborn as sns
+from matplotlib import pyplot as plt
 from nltk.corpus import stopwords
 
 
@@ -124,6 +124,7 @@ def get_messages_dict(msgs):
     return msg_list
 
 def from_msg_get_replies(msg):
+
     replies = []
     if "thread_ts" in msg and "replies" in msg:
         try:
@@ -135,7 +136,36 @@ def from_msg_get_replies(msg):
             pass
     return replies
 
+def from_msg_get_replies_text(msg):
+    '''
+    Extract replies from a message
+    '''
+    replies = []
+    if "text" in msg:
+        try:
+            for reply in msg["replies"]:
+                replies.append(msg['text'])
+        except:
+            pass
+        
+    return replies
+
+def from_msg_get_replies_text_with_specific_date(msg):
+    '''
+    Extract replies from a message
+    '''
+    replies = defaultdict(list)
+    if "text" in msg:
+        try:
+            for reply in msg["replies"]:
+                replies[msg['ts']].append(msg['text'])
+        except:
+            pass
+        
+    return replies
+    
 def msgs_to_df(msgs):
+
     msg_list = get_messages_dict(msgs)
     df = pd.DataFrame(msg_list)
     return df
@@ -154,13 +184,12 @@ def process_msgs(msg):
 
 def get_messages_from_channel(channel_path):
     '''
-    get all the messages from a channel        
+    Get all the messages from a channel        
     '''
     channel_json_files = os.listdir(channel_path)
     channel_msgs = [json.load(open(channel_path + "/" + f)) for f in channel_json_files]
 
-    df = pd.concat([pd.DataFrame(get_messages_dict(msgs)) for msgs in channel_msgs])
-    print(f"Number of messages in channel: {len(df)}")
+    df = pd.concat([pd.DataFrame(msgs) for msgs in channel_msgs])
     
     return df
 
@@ -181,24 +210,121 @@ def convert_2_timestamp(column, data):
         return timestamp_
     else: print(f"{column} not in data")
 
+def get_messages_reply_timestamp_from_channel(channel_path):
+    
+    json_files = [
+        f"{channel_path}/{pos_json}" 
+        for pos_json in os.listdir(channel_path) 
+        if pos_json.endswith('.json')
+    ]     
+    combined = []
 
-    def get_tagged_users(df):
-        """get all @ in the messages"""
+    for json_file in json_files:
+        with open(json_file, 'r', encoding="utf8") as slack_data:
+            json_content = json.load(slack_data)
+            combined.extend(json_content)
+    
+    message_time_stamps = []
+    no_reply_messages_count = 0
 
-        return df['msg_content'].map(lambda x: re.findall(r'@U\w+', x))
-    def get_community_participation(path):
-            """ specify path to get json files"""
-            combined = []
-            comm_dict = {}
-            for json_file in glob.glob(f"{path}*.json"):
-                with open(json_file, 'r') as slack_data:
-                    combined.append(slack_data)
-            # print(f"Total json files is {len(combined)}")
-            for i in combined:
-                a = json.load(open(i.name, 'r', encoding='utf-8'))
+    for msgs in combined:
+        if "latest_reply" in msgs:
+            message_time_stamps.append([msgs["ts"], msgs["latest_reply"]])
+        else:
+            no_reply_messages_count += 1
 
-                for msg in a:
-                    if 'replies' in msg.keys():
-                        for i in msg['replies']:
-                            comm_dict[i['user']] = comm_dict.get(i['user'], 0)+1
-            return comm_dict
+    return message_time_stamps, no_reply_messages_count
+
+def get_channel_messages_replies_timestamp(channel_path):
+    json_files = [
+        f"{channel_path}/{pos_json}" 
+        for pos_json in os.listdir(channel_path) 
+        if pos_json.endswith('.json')
+    ]   
+
+    combined = []
+
+    for json_file in json_files:
+        with open(json_file, 'r', encoding="utf8") as slack_data:
+            json_content = json.load(slack_data)
+            combined.extend(json_content)
+    
+    reply_timestamps = []
+
+    for msg in combined:    
+        msg_replies = from_msg_get_replies(msg) 
+        if msg_replies:
+            reply_timestamps.extend([reply['ts'] for reply in msg_replies])
+
+    return reply_timestamps
+
+def get_all_events_timestamp_on_channel(channel_path):
+    json_files = [
+        f"{channel_path}/{pos_json}" 
+        for pos_json in os.listdir(channel_path) 
+        if pos_json.endswith('.json')
+    ]
+    combined = []
+
+    for json_file in json_files:
+        with open(json_file, 'r', encoding="utf8") as slack_data:
+            json_content = json.load(slack_data)
+            combined.extend(json_content)
+    
+    channel_events_time_stamp = get_timestamps_from_messages(combined)
+                 
+    return channel_events_time_stamp
+
+def get_timestamps_from_messages(messages):
+    timestamps = []
+
+    for msg in messages:
+        if 'ts' in msg:
+            timestamps.append(msg['ts'])
+
+    return timestamps
+
+def find_reaction_timestamps(channel_path):
+    json_files = [
+        f"{channel_path}/{pos_json}" 
+        for pos_json in os.listdir(channel_path) 
+        if pos_json.endswith('.json')
+    ]  
+
+    combined = []
+
+    for json_file in json_files:
+        with open(json_file, 'r', encoding="utf8") as slack_data:
+            json_content = json.load(slack_data)
+            combined.extend(json_content)
+            
+    reaction_timestamps = []
+    for item in combined:
+        if 'reactions' in item:
+            reactions = item['reactions']
+            for reaction in reactions:
+                if 'ts' in reaction:
+                    reaction_timestamps.append(float(reaction['ts']))
+
+    return reaction_timestamps
+
+def get_messages_timestamp_from_channel(channel_path):
+    
+    json_files = [
+        f"{channel_path}/{pos_json}" 
+        for pos_json in os.listdir(channel_path) 
+        if pos_json.endswith('.json')
+    ]     
+    combined = []
+
+    for json_file in json_files:
+        with open(json_file, 'r', encoding="utf8") as slack_data:
+            json_content = json.load(slack_data)
+            combined.extend(json_content)
+    
+    message_time_stamps = defaultdict(list)
+
+    for msgs in combined:
+        message_time_stamps[msgs['ts']].append(msgs['text'])
+
+    return message_time_stamps
