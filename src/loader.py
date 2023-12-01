@@ -1,13 +1,15 @@
-import json
 import argparse
-import os
-import io
-import shutil
 import copy
+import glob
+import io
+import json
+import os
+import shutil
+import pandas as pd
 from datetime import datetime
-from pick import pick
 from time import sleep
 
+from pick import pick
 
 
 # Create wrapper classes for using slack_sdk in place of slacker
@@ -28,14 +30,14 @@ class SlackDataLoader:
     For secruity reason, we have annonymized names - the names you will see are generated using faker library.
     
     '''
+    
     def __init__(self, path):
         '''
-        path: path to the slack exported data folder
+        path: ./../dataset/
         '''
         self.path = path
         self.channels = self.get_channels()
-        self.users = self.get_ussers()
-    
+        self.users = self.get_users()
 
     def get_users(self):
         '''
@@ -55,27 +57,26 @@ class SlackDataLoader:
 
         return channels
 
-    def get_channel_messages(self, channel_name):
-        '''
-        write a function to get all the messages from a channel
-        
-        '''
 
-    # 
     def get_user_map(self):
         '''
-        write a function to get a map between user id and user name
+        Get a map between user id and user name.
+        Returns two dictionaries: userNamesById and userIdsByName.
         '''
-        userNamesById = {}
-        userIdsByName = {}
+        user_names_by_id = {}
+        user_ids_by_name = {}
+
         for user in self.users:
-            userNamesById[user['id']] = user['name']
-            userIdsByName[user['name']] = user['id']
-        return userNamesById, userIdsByName        
+            user_id = user.get('id')
+            user_name = user.get('name')
 
+            if user_id and user_name:
+                user_names_by_id[user_id] = user_name
+                user_ids_by_name[user_name] = user_id
 
-    # combine all json file in all-weeks8-9
-    def slack_parser(path_channel):
+        return user_names_by_id, user_ids_by_name
+
+    def slack_parser(self, path_channel):
         """ parse slack data to extract useful informations from the json file
             step of execution
             1. Import the required modules
@@ -87,18 +88,24 @@ class SlackDataLoader:
         """
 
         # specify path to get json files
+        json_files = [f"{path_channel}/{pos_json}" for pos_json in os.listdir(path_channel) if pos_json.endswith('.json')]
         combined = []
-        for json_file in glob.glob(f"{path_channel}*.json"):
+
+        for json_file in json_files:
             with open(json_file, 'r', encoding="utf8") as slack_data:
-                combined.append(slack_data)
+                json_content = json.load(slack_data)
+                combined.append(json_content)
+        
+
 
         # loop through all json files and extract required informations
         dflist = []
-        for slack_data in combined:
 
+        for slack_data in combined:
+          
             msg_type, msg_content, sender_id, time_msg, msg_dist, time_thread_st, reply_users, \
             reply_count, reply_users_count, tm_thread_end = [],[],[],[],[],[],[],[],[],[]
-
+            
             for row in slack_data:
                 if 'bot_id' in row.keys():
                     continue
@@ -115,9 +122,12 @@ class SlackDataLoader:
                         time_thread_st.append(row['thread_ts'])
                     else:
                         time_thread_st.append(0)
-                    if 'reply_users' in row.keys(): reply_users.append(",".join(row['reply_users'])) 
-                    else:    reply_users.append(0)
+                    if 'reply_users' in row.keys():
+                        reply_users.append(",".join(row['reply_users']))                        
+                    else:    
+                        reply_users.append(0)
                     if 'reply_count' in row.keys():
+
                         reply_count.append(row['reply_count'])
                         reply_users_count.append(row['reply_users_count'])
                         tm_thread_end.append(row['latest_reply'])
@@ -125,6 +135,8 @@ class SlackDataLoader:
                         reply_count.append(0)
                         reply_users_count.append(0)
                         tm_thread_end.append(0)
+            
+
             data = zip(msg_type, msg_content, sender_id, time_msg, msg_dist, time_thread_st,
             reply_count, reply_users_count, reply_users, tm_thread_end)
             columns = ['msg_type', 'msg_content', 'sender_name', 'msg_sent_time', 'msg_dist_type',
@@ -133,6 +145,8 @@ class SlackDataLoader:
             df = pd.DataFrame(data=data, columns=columns)
             df = df[df['sender_name'] != 'Not provided']
             dflist.append(df)
+        
+
 
         dfall = pd.concat(dflist, ignore_index=True)
         dfall['channel'] = path_channel.split('/')[-1].split('.')[0]        
@@ -141,19 +155,25 @@ class SlackDataLoader:
         return dfall
 
 
-    def parse_slack_reaction(path, channel):
+    def parse_slack_reaction(self, path, channel):
         """get reactions"""
         dfall_reaction = pd.DataFrame()
         combined = []
-        for json_file in glob.glob(f"{path}*.json"):
-            with open(json_file, 'r') as slack_data:
-                combined.append(slack_data)
+
+        json_files = [f"{path}/{pos_json}" for pos_json in os.listdir(path) if pos_json.endswith('.json')]
+        combined = []
+
+        for json_file in json_files:
+            with open(json_file, 'r', encoding="utf8") as slack_data:
+                json_content = json.load(slack_data)
+                combined.append(json_content)
+    
+
+
 
         reaction_name, reaction_count, reaction_users, msg, user_id = [], [], [], [], []
 
-        for k in combined:
-            slack_data = json.load(open(k.name, 'r', encoding="utf-8"))
-            
+        for slack_data in combined:            
             for i_count, i in enumerate(slack_data):
                 if 'reactions' in i.keys():
                     for j in range(len(i['reactions'])):
@@ -169,22 +189,29 @@ class SlackDataLoader:
         df_reaction['channel'] = channel
         return df_reaction
 
-    def convert_2_timestamp(column, data):
-        """convert from unix time to readable timestamp
-            args: column: columns that needs to be converted to timestamp
-                    data: data that has the specified column
-        """
-        if column in data.columns.values:
-            timestamp_ = []
-            for time_unix in data[column]:
-                if time_unix == 0:
-                    timestamp_.append(0)
-                else:
-                    a = datetime.datetime.fromtimestamp(float(time_unix))
-                    timestamp_.append(a.strftime('%Y-%m-%d %H:%M:%S'))
-            return timestamp_
-        else: 
-            print(f"{column} not in data")
+    def get_community_participation(self, path):
+        """ specify path to get json files"""
+
+        json_files = glob.glob(f"{path_channel}/*.json")
+        combined = []
+
+        for json_file in json_files:
+            with open(json_file, 'r', encoding="utf8") as slack_data:
+                json_content = json.load(slack_data)
+                combined.extend(json_content)
+                
+
+        combined = []
+        comm_dict = {}
+     
+        # print(f"Total json files is {len(combined)}")
+        for a in combined:
+            for msg in a:
+                if 'replies' in msg.keys():
+                    for i in msg['replies']:
+                        comm_dict[i['user']] = comm_dict.get(i['user'], 0)+1
+        return comm_dict
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Export Slack history')
