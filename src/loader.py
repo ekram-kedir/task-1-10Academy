@@ -7,6 +7,7 @@ import os
 import shutil
 import pandas as pd
 from datetime import datetime
+from pick import pick
 from time import sleep
 
 from pick import pick
