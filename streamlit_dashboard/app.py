@@ -514,7 +514,6 @@ with st.container():
 
         st.title("Channel with the Highest Activity")
         st.subheader(f"The channel with the highest activity is: {highest_activity_channel}")
-        st.title("Channel Activity (2D Scatter Plot)")
         x_values = list(channel_activity_data.values())
         y_values = [0] * len(x_values)
         channel_names = list(channel_activity_data.keys())

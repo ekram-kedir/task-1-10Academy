@@ -6,3 +6,5 @@ pandas==1.3.0
 streamlit
 pick==2.2.0
 seaborn
+nltk.sentiment
+nltk.corpus
