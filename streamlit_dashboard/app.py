@@ -8,6 +8,10 @@ import streamlit as st
 from gensim import corpora
 from itertools import cycle
 from datetime import datetime
+
+import matplotlib.pyplot as plt
+from datetime import datetime
+from collections import defaultdict
 from nltk.corpus import stopwords
 from gensim.models import LdaModel
 from collections import defaultdict
@@ -21,13 +25,6 @@ sys.path.append('./')
 from src.loader import SlackDataLoader
 from src.utils import get_messages_reply_timestamp_from_channel,get_channel_messages_replies_timestamp,get_all_events_timestamp_on_channel,get_messages_from_channel,from_msg_get_replies_text, get_messages_timestamp_from_channel, from_msg_get_replies_text_with_specific_date
 
-
-
-import streamlit as st
-import matplotlib.pyplot as plt
-from datetime import datetime
-from collections import defaultdict
-import numpy as np
 
 st.set_page_config(
     page_title="Slack Message Analysis",
