@@ -1,3 +1,2 @@
 gensim==4.1.2
-other_dependency==1.2.3
 streamlit==1.14.0
