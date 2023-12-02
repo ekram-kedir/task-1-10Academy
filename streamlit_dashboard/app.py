@@ -12,12 +12,10 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 from datetime import datetime
 from collections import defaultdict
-from nltk.corpus import stopwords
 from gensim.models import LdaModel
 from collections import defaultdict
 from matplotlib import pyplot as plt
 from gensim.utils import simple_preprocess
-from nltk.sentiment import SentimentIntensityAnalyzer
 from gensim.models.coherencemodel import CoherenceModel
 from gensim.parsing.preprocessing import preprocess_string
 sys.path.append('./')
@@ -34,7 +32,7 @@ st.set_page_config(
 
 st.sidebar.title("Navigation")
 selected_page = st.sidebar.radio(
-    "Go to", ["Time Differences", "Topic Modeling", "Messages by Day", "Sentiment Analysis", "Top 10 or bottom 10 users", "Top Messages","Channel Activity","Messages difference"]
+    "Go to", ["Time Differences", "Topic Modeling", "Messages by Day", "Top 10 or bottom 10 users", "Top Messages","Channel Activity","Messages difference"]
 )
 
 st.title("Slack Message Analysis Dashboard")
@@ -216,95 +214,6 @@ with st.container():
             
             st.write("\n")
 
-    elif selected_page == "Sentiment Analysis":
-
-        # Function to perform sentiment analysis
-        def perform_sentiment_analysis(messages):
-            sia = SentimentIntensityAnalyzer()
-            positive_sentiments = 0
-            negative_sentiments = 0
-            neutral_sentiments = 0
-            
-            for message in messages:
-                sentiment_scores = sia.polarity_scores(message)
-                sentiment_score = sentiment_scores['compound']
-                
-                if sentiment_score > 0:
-                    positive_sentiments += 1
-                elif sentiment_score < 0:
-                    negative_sentiments += 1
-                else:
-                    neutral_sentiments += 1
-            
-            return positive_sentiments, negative_sentiments, neutral_sentiments
-
-        # Load data and concatenate messages
-        data_loader = SlackDataLoader(path='./dataset/')
-        channels_data = data_loader.get_channels()
-        path_channel = f"./dataset/all-week1"
-        all_messages_and_replies_from_channels = defaultdict(list)
-
-        all_messages = get_messages_timestamp_from_channel(path_channel)
-        all_replies = from_msg_get_replies_text_with_specific_date(path_channel)
-
-        for date, messages in all_messages.items():
-            all_messages_and_replies_from_channels[date[:10]].extend(messages)
-        for date, replies in all_replies.items():
-            all_messages_and_replies_from_channels[date[:10]].extend(replies)
-
-        # Perform sentiment analysis
-        positive_sentiments = {}
-        negative_sentiments = {}
-        neutral_sentiments = {}
-
-        for date, messages in all_messages_and_replies_from_channels.items():
-            date_obj = datetime.fromtimestamp(float(date))
-            formatted_date = date_obj.strftime("%B %d, %Y %H:%M:%S")
-            
-            positive_count, negative_count, neutral_count = perform_sentiment_analysis(messages)
-            positive_sentiments[formatted_date] = positive_count
-            negative_sentiments[formatted_date] = negative_count
-            neutral_sentiments[formatted_date] = neutral_count
-
-        # Display results in Streamlit dashboard
-        st.title("Sentiment Analysis Results")
-
-        # Display negative sentiments
-        st.subheader("Negative Sentiments:")
-        negative_chart = st.bar_chart(negative_sentiments)
-        
-         # Display positive sentiments
-        st.subheader("Positive Sentiments:")
-        positive_chart = st.bar_chart(positive_sentiments)
-
-        # Display neutral sentiments
-        st.subheader("Neutral Sentiments:")
-        neutral_chart = st.bar_chart(neutral_sentiments)
-
-        # Time Series Trend of Sentiments
-        st.subheader("Time Series Trend of Sentiments")
-
-        # #Sentimental Analysis
-        dates = list(positive_sentiments.keys())
-        positive_counts = list(positive_sentiments.values())
-        negative_counts = list(negative_sentiments.values())
-        neutral_counts = list(neutral_sentiments.values())
-
-        # Create a figure and plot the data
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(dates, positive_counts, label='Positive Sentiments')
-        ax.plot(dates, negative_counts, label='Negative Sentiments')
-        ax.plot(dates, neutral_counts, label='Neutral Sentiments')
-
-        # Customize the plot
-        ax.set_xlabel('Date')
-        ax.set_ylabel('Sentiment Counts')
-        ax.set_title('Time Series Trend of Sentiments')
-        ax.tick_params(axis='x', rotation=45)
-        ax.legend()
-
-        # Display the Matplotlib figure in Streamlit
-        st.pyplot(fig)
 
     elif selected_page == "Top 10 or bottom 10 users":
 
